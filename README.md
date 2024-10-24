@@ -32,13 +32,13 @@ serverless deploy
 ### To Shutdown ECS Services:
 
 ```shell
-serverless invoke local --function shutdownECS
+serverless invoke local --function shutdown
 ```
 
 ### To Turn On ECS Services:
 
 ```shell
-serverless invoke local --function turnOnECS
+serverless invoke local --function turnOn
 ```
 
 ## Configuration
