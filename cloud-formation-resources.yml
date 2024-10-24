@@ -1,0 +1,122 @@
+
+Resources:
+  ResourceManagerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "ResourceManagerPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # ECS Permissions
+              - Effect: "Allow"
+                Action:
+                  - ecs:ListClusters
+                  - ecs:ListServices
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                  - ecs:DescribeTaskDefinition
+                Resource: "arn:aws:ecs:${param:region, 'us-east-1'}:*:service/*"
+              
+              # EC2 Permissions
+              - Effect: "Allow"
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:StartInstances
+                  - ec2:StopInstances
+                Resource: "*"
+              
+              # RDS Permissions
+              - Effect: "Allow"
+                Action:
+                  - rds:DescribeDBInstances
+                  - rds:StartDBInstance
+                  - rds:StopDBInstance
+                  - rds:ListTagsForResource
+                Resource: "*"
+              
+              # EKS Permissions
+              - Effect: "Allow"
+                Action:
+                  - eks:ListClusters
+                  - eks:DescribeCluster
+                  - eks:ListNodegroups
+                  - eks:UpdateNodegroupConfig
+                Resource: "*"
+              
+              # CloudWatch Logs Permissions
+              - Effect: "Allow"
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+
+  # Optional Cross-Account Role (uncomment and modify as needed)
+  # CrossAccountRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     RoleName: ${param:cross-account-role-name, 'ResourceManagerCrossAccountRole'}
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: "Allow"
+  #           Principal:
+  #             AWS: "arn:aws:iam::${param:trusted-account}:root"
+  #           Action: "sts:AssumeRole"
+  #     Policies:
+  #       - PolicyName: "CrossAccountResourceManagerPolicy"
+  #         PolicyDocument:
+  #           Version: "2012-10-17"
+  #           Statement:
+  #             - Effect: "Allow"
+  #               Action:
+  #                 - ecs:ListClusters
+  #                 - ecs:ListServices
+  #                 - ecs:DescribeServices
+  #                 - ecs:UpdateService
+  #                 - ecs:DescribeTaskDefinition
+  #               Resource: "arn:aws:ecs:${param:region, 'us-east-1'}:${param:trusted-account}:service/*"
+
+
+## OLD RESOURCES
+          
+# resources:
+#   Resources:
+#     ECSLambdaRole:
+#       Type: AWS::IAM::Role
+#       Properties:
+#         AssumeRolePolicyDocument:
+#           Version: "2012-10-17"
+#           Statement:
+#             - Effect: "Allow"
+#               Principal:
+#                 Service: lambda.amazonaws.com
+#               Action: "sts:AssumeRole"
+#         Policies:
+#           - PolicyName: "ECSAccessPolicy"
+#             PolicyDocument:
+#               Version: "2012-10-17"
+#               Statement:
+#                 - Effect: "Allow"
+#                   Action:
+#                     - ecs:ListClusters
+#                     - ecs:ListServices
+#                     - ecs:DescribeServices
+#                     - ecs:UpdateService
+#                     - ecs:DescribeTaskDefinition
+
+#                   Resource: "arn:aws:ecs:us-east-1:992382619112:service/*" # Only DEV clusters in us-east-1
+#                 - Effect: "Allow"
+#                   Action:
+#                     - logs:CreateLogGroup
+#                     - logs:CreateLogStream
+#                     - logs:PutLogEvents
+#                   Resource: "arn:aws:logs:*:*:*"

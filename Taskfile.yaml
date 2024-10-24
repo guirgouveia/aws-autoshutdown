@@ -1,0 +1,14 @@
+version: '3'
+
+tasks:
+  deploy:
+    cmds:
+      - serverless deploy
+
+  shutdown:
+    cmds:
+      - "serverless invoke local --function shutdownECS --data '{\"CLUSTERS_NAMES\": \"dev-sentry-be\"}'"
+
+  turn-on:
+    cmds:
+      - "serverless invoke local --function turnOnECS --data '{\"CLUSTERS_NAMES\": \"dev-sentry-be\", \"action\": \"turn-on\"}'"

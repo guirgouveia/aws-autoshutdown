@@ -1,0 +1,54 @@
+frameworkVersion: '3'
+configValidationMode: error
+service: ${self:serviceName, 'generic-service'}
+
+# Custom configurations for different stages
+custom:
+  stages:
+    dev:
+      cluster: 'dev-cluster'
+      region: 'us-east-1'
+      profile: 'default'
+    prod:
+      cluster: 'prod-cluster'
+      region: 'us-west-1'
+      profile: 'prod'
+
+provider:
+  name: aws
+  runtime: python3.9
+  stage: ${opt:stage, 'dev'}  # Use the stage from CLI or default to 'dev'
+  environment:
+    CLUSTERS_NAMES: ${self:custom.stages.${sls:stage}.cluster}  # Access cluster parameter
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - ecs:ListClusters
+            - ecs:ListServices
+            - ecs:DescribeServices
+            - ecs:UpdateService
+            - ecs:DescribeTaskDefinition
+          Resource:
+            - "arn:aws:ecs:*:*:service/*"
+        - Effect: "Allow"
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "arn:aws:logs:*:*:*"
+
+functions:
+  turnOn:
+    handler: handler.turn_on
+    events:
+      - eventBridge:
+          schedule: cron(0 4 ? * MON-FRI *) # UTC 
+  shutdown:
+    handler: handler.shutdown
+    events:
+      - eventBridge:
+          schedule: cron(0 22 ? * MON-FRI *) # UTC
+
+resources: ${file(./cloud-formation-resources.yml)}

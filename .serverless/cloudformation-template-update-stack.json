@@ -1,0 +1,487 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The AWS CloudFormation template for this Serverless application",
+  "Resources": {
+    "ServerlessDeploymentBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ServerlessDeploymentBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "ServerlessDeploymentBucket"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "ServerlessDeploymentBucket"
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "ServerlessDeploymentBucket"
+                      }
+                    ]
+                  ]
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "TurnOnLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/generic-service-dev-turnOn"
+      }
+    },
+    "ShutdownLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/generic-service-dev-shutdown"
+      }
+    },
+    "IamRoleLambdaExecution": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": {
+              "Fn::Join": [
+                "-",
+                [
+                  "generic-service",
+                  "dev",
+                  "lambda"
+                ]
+              ]
+            },
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:CreateLogGroup",
+                    "logs:TagResource"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/generic-service-dev*:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/generic-service-dev*:*:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:ListClusters",
+                    "ecs:ListServices",
+                    "ecs:DescribeServices",
+                    "ecs:UpdateService",
+                    "ecs:DescribeTaskDefinition"
+                  ],
+                  "Resource": "arn:aws:ecs:*:*:service/*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                }
+              ]
+            }
+          }
+        ],
+        "Path": "/",
+        "RoleName": {
+          "Fn::Join": [
+            "-",
+            [
+              "generic-service",
+              "dev",
+              {
+                "Ref": "AWS::Region"
+              },
+              "lambdaRole"
+            ]
+          ]
+        }
+      }
+    },
+    "TurnOnLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/generic-service/dev/1729779430760-2024-10-24T14:17:10.760Z/generic-service.zip"
+        },
+        "Handler": "handler.turn_on",
+        "Runtime": "python3.9",
+        "FunctionName": "generic-service-dev-turnOn",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Environment": {
+          "Variables": {
+            "CLUSTERS_NAMES": "dev-cluster"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "TurnOnLogGroup"
+      ]
+    },
+    "ShutdownLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/generic-service/dev/1729779430760-2024-10-24T14:17:10.760Z/generic-service.zip"
+        },
+        "Handler": "handler.shutdown",
+        "Runtime": "python3.9",
+        "FunctionName": "generic-service-dev-shutdown",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Environment": {
+          "Variables": {
+            "CLUSTERS_NAMES": "dev-cluster"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "ShutdownLogGroup"
+      ]
+    },
+    "TurnOnLambdaVersionqeL30sO9Rd8aXOeGAWEsJU6fuigaTJbXtkBEFTPAB4": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "TurnOnLambdaFunction"
+        },
+        "CodeSha256": "Vj7wiicd1plZcsdDmMGNrt+k2amzgDLD+tASwsA9MDg="
+      }
+    },
+    "ShutdownLambdaVersionY6x0ODMMJYdASvEsVmATpOXBzJvx9ydTndz5bLenlM": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "ShutdownLambdaFunction"
+        },
+        "CodeSha256": "Vj7wiicd1plZcsdDmMGNrt+k2amzgDLD+tASwsA9MDg="
+      }
+    },
+    "GenericservicedevturnOnrule1EventBridgeRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Name": "generic-service-dev-turnOn-rule-1",
+        "ScheduleExpression": "cron(0 4 ? * MON-FRI *)",
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "TurnOnLambdaFunction",
+                "Arn"
+              ]
+            },
+            "Id": "generic-service-dev-turnOn-rule-1-target"
+          }
+        ]
+      }
+    },
+    "TurnOnEventBridgeLambdaPermission1": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "TurnOnLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            ":",
+            [
+              "arn",
+              {
+                "Ref": "AWS::Partition"
+              },
+              "events",
+              {
+                "Ref": "AWS::Region"
+              },
+              {
+                "Ref": "AWS::AccountId"
+              },
+              {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "rule",
+                    "generic-service-dev-turnOn-rule-1"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "Genericservicedevshutdownrule1EventBridgeRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Name": "generic-service-dev-shutdown-rule-1",
+        "ScheduleExpression": "cron(0 22 ? * MON-FRI *)",
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "ShutdownLambdaFunction",
+                "Arn"
+              ]
+            },
+            "Id": "generic-service-dev-shutdown-rule-1-target"
+          }
+        ]
+      }
+    },
+    "ShutdownEventBridgeLambdaPermission1": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ShutdownLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            ":",
+            [
+              "arn",
+              {
+                "Ref": "AWS::Partition"
+              },
+              "events",
+              {
+                "Ref": "AWS::Region"
+              },
+              {
+                "Ref": "AWS::AccountId"
+              },
+              {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "rule",
+                    "generic-service-dev-shutdown-rule-1"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "ResourceManagerRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ResourceManagerPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:ListClusters",
+                    "ecs:ListServices",
+                    "ecs:DescribeServices",
+                    "ecs:UpdateService",
+                    "ecs:DescribeTaskDefinition"
+                  ],
+                  "Resource": "arn:aws:ecs:us-east-1:*:service/*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ec2:DescribeInstances",
+                    "ec2:StartInstances",
+                    "ec2:StopInstances"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "rds:DescribeDBInstances",
+                    "rds:StartDBInstance",
+                    "rds:StopDBInstance",
+                    "rds:ListTagsForResource"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "eks:ListClusters",
+                    "eks:DescribeCluster",
+                    "eks:ListNodegroups",
+                    "eks:UpdateNodegroupConfig"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "ServerlessDeploymentBucketName": {
+      "Value": {
+        "Ref": "ServerlessDeploymentBucket"
+      },
+      "Export": {
+        "Name": "sls-generic-service-dev-ServerlessDeploymentBucketName"
+      }
+    },
+    "TurnOnLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "TurnOnLambdaVersionqeL30sO9Rd8aXOeGAWEsJU6fuigaTJbXtkBEFTPAB4"
+      },
+      "Export": {
+        "Name": "sls-generic-service-dev-TurnOnLambdaFunctionQualifiedArn"
+      }
+    },
+    "ShutdownLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "ShutdownLambdaVersionY6x0ODMMJYdASvEsVmATpOXBzJvx9ydTndz5bLenlM"
+      },
+      "Export": {
+        "Name": "sls-generic-service-dev-ShutdownLambdaFunctionQualifiedArn"
+      }
+    }
+  }
+}
